@@ -1,17 +1,22 @@
 """
 Created by Christos Baziotis.
 """
-import numpy
-from keras import backend as K
-from keras.callbacks import Callback
 import glob
 import os
 from collections import defaultdict
-import seaborn as sns
+
 import matplotlib.pyplot as plt
+import numpy
+import seaborn as sns
+from keras import backend as K
 from keras.callbacks import Callback
-import matplotlib.transforms as mtrans
+
 from helpers.data_preparation import onehot_to_categories
+from helpers.utilities import get_model_desc
+
+plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern Roman'], 'monospace': ['Computer Modern Typewriter']})
+# plt.rc('text', usetex=True)
+plt.rc("figure", facecolor="white")
 
 
 class LossEarlyStopping(Callback):
@@ -114,6 +119,7 @@ class MetricsCallback(Callback):
             self.add_predictions(self.test_data, name="test", logs=logs)
         if self.training_data:
             self.add_predictions(self.training_data, name="train", logs=logs)
+
 
 class PlottingCallback(Callback):
     def __init__(self, benchmarks=None, grid_ranges=None, width=4, height=4):
@@ -227,3 +233,135 @@ class PlottingCallback(Callback):
 
     def on_train_end(self, logs={}):
         self.save_plot()
+
+
+class WeightsCallback(Callback):
+    def __init__(self, parameters=None, stats=None, merge_weights=True):
+        super().__init__()
+        self.layers_stats = defaultdict(dict)
+        self.fig = None
+        self.parameters = parameters
+        self.stats = stats
+        self.merge_weights = merge_weights
+        if parameters is None:
+            self.parameters = ["W"]
+        if stats is None:
+            self.stats = ["mean", "std"]
+
+    def get_trainable_layers(self):
+        layers = []
+        for layer in self.model.layers:
+            if "merge" in layer.name:
+                for l in layer.layers:
+                    if hasattr(l, 'trainable') and l.trainable and len(l.weights):
+                        if not any(x.name == l.name for x in layers):
+                            layers.append(l)
+            else:
+                if hasattr(layer, 'trainable') and layer.trainable and len(layer.weights):
+                    layers.append(layer)
+        return layers
+
+    def on_train_begin(self, logs={}):
+        for layer in self.get_trainable_layers():
+            for param in self.parameters:
+                if any(w for w in layer.weights if param in w.name.split("_")):
+                    name = layer.name + "_" + param
+                    self.layers_stats[name]["values"] = numpy.asarray([]).ravel()
+                    for s in self.stats:
+                        self.layers_stats[name][s] = []
+
+        # plt.style.use('ggplot')
+        plt.ion()  # set plot to animated
+        width = 4 * (1 + len(self.stats))
+        height = 2 * len(self.layers_stats)
+        self.fig = plt.figure(figsize=(width, height))  # width, height in inches
+        # sns.set_style("whitegrid")
+        # self.draw_plot()
+
+    def draw_plot(self):
+        self.fig.clf()
+
+        layers = self.get_trainable_layers()
+        height = len(self.layers_stats)
+        width = len(self.stats) + 1
+
+        plot_count = 1
+        for layer in layers:
+            for param in self.parameters:
+                weights = [w for w in layer.weights if param in w.name.split("_")]
+
+                if len(weights) == 0:
+                    continue
+
+                val = numpy.column_stack((w.get_value() for w in weights))
+                name = layer.name + "_" + param
+
+                self.layers_stats[name]["values"] = val.ravel()
+                ax = self.fig.add_subplot(height, width, plot_count)
+                ax.hist(self.layers_stats[name]["values"], bins=50)
+                ax.set_title(name, fontsize=10)
+                ax.grid(True)
+                ax.tick_params(labelsize=8)
+                plot_count += 1
+
+                for s in self.stats:
+                    axs = self.fig.add_subplot(height, width, plot_count)
+
+                    if s == "raster":
+                        if len(val.shape) > 2:
+                            val = val.reshape((val.shape[0], -1), order='F')
+                        self.layers_stats[name][s] = val
+                        m = axs.imshow(self.layers_stats[name][s],
+                                       cmap='coolwarm', interpolation='nearest', aspect='auto', )  # aspect='equal'
+                        cbar = self.fig.colorbar(mappable=m)
+                        cbar.ax.tick_params(labelsize=8)
+                    else:
+                        self.layers_stats[name][s].append(getattr(numpy, s)(val))
+                        axs.plot(self.layers_stats[name][s])
+                        axs.set_ylabel(s, fontsize="small")
+                        axs.set_xlabel('epoch', fontsize="small")
+                        axs.grid(True)
+
+                    axs.set_title(name + " - " + s, fontsize=10)
+                    axs.tick_params(labelsize=8)
+                    plot_count += 1
+
+        # plt.figtext(.1, .1, get_model_desc(self.model), wrap=True, fontsize=8)
+        desc = get_model_desc(self.model)
+        self.fig.text(.02, .02, desc, verticalalignment='bottom', wrap=True, fontsize=8)
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(bottom=.14)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def update_plot(self):
+
+        layers = self.get_trainable_layers()
+
+        for layer in layers:
+            for param in self.parameters:
+                weights = [w for w in layer.weights if param in w.name.split("_")]
+
+                if len(weights) == 0:
+                    continue
+
+                val = numpy.column_stack((w.get_value() for w in weights))
+                name = layer.name + "_" + param
+                self.layers_stats[name]["values"] = val.ravel()
+                for s in self.stats:
+                    if s == "raster":
+                        if len(val.shape) > 2:
+                            val = val.reshape((val.shape[0], -1), order='F')
+                        self.layers_stats[name][s] = val
+                        # self.fig.colorbar()
+                    else:
+                        self.layers_stats[name][s].append(getattr(numpy, s)(val))
+
+        plt.figtext(.02, .02, get_model_desc(self.model), wrap=True, fontsize=8)
+        self.fig.tight_layout()
+        self.fig.subplots_adjust(bottom=.2)
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def on_epoch_end(self, epoch, logs={}):
+        self.draw_plot()
