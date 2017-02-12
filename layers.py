@@ -44,6 +44,9 @@ class MeanOverTime(Layer):
 
 
 class CustomMasking(Layer):
+    """
+    Not working...
+    """
     def __init__(self, mask_value=0., **kwargs):
         self.test = None
         super(CustomMasking, self).__init__(**kwargs)
@@ -152,91 +155,6 @@ class Attention(Layer):
         return input_shape[0], input_shape[-1]
 
 
-class Sorting(Layer):
-    def __init__(self, mask, W_regularizer=None, b_regularizer=None,
-                 W_constraint=None, b_constraint=None,
-                 bias=True, **kwargs):
-        """
-        Attention operation for temporal data.
-        Computes a simple weighted sum of the steps.
-        Supports Masking.
-        # Input shape
-            3D tensor with shape: `(samples, steps, features)`.
-        # Output shape
-            2D tensor with shape: `(samples, features)`.
-        :param kwargs:
-
-        Example:
-            model.add(LSTM(64, return_sequences=True))
-            model.add(Attention())
-        """
-        self.supports_masking = True
-        self.test = mask
-        self.init = initializations.get('glorot_uniform')
-
-        self.W_regularizer = regularizers.get(W_regularizer)
-        self.b_regularizer = regularizers.get(b_regularizer)
-
-        self.W_constraint = constraints.get(W_constraint)
-        self.b_constraint = constraints.get(b_constraint)
-
-        self.bias = bias
-        super(Sorting, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-
-        self.W = self.add_weight((input_shape[-1],),
-                                 initializer=self.init,
-                                 name='{}_W'.format(self.name),
-                                 regularizer=self.W_regularizer,
-                                 constraint=self.W_constraint)
-        if self.bias:
-            self.b = self.add_weight((input_shape[1],),
-                                     initializer='zero',
-                                     name='{}_b'.format(self.name),
-                                     regularizer=self.b_regularizer,
-                                     constraint=self.b_constraint)
-        else:
-            self.b = None
-
-        self.built = True
-        # super(Attention, self).build(input_shape)
-
-    def compute_mask(self, input, input_mask=None):
-        return None
-
-    def call(self, x, mask=None):
-        eij = K.dot(x, self.W)
-
-        if self.bias:
-            eij += self.b
-
-        eij = K.sigmoid(eij)
-
-        # recreate the masks - all zero rows have been masked
-        self.mymask = K.not_equal(K.sum(K.abs(x), axis=2, keepdims=True), 0)
-        self.mmask = mask
-
-        if mask is not None:
-            # mask = K.cast(mask, 'float32')
-            eij *= mask
-
-        eij *= self.test
-
-        # a = K.softmax(eij)
-        a = eij
-
-        # a[a.argsort() == 0] = 2
-        # a[a.argsort() > 0] = 1
-        # a[a.argsort() > 9] = 0
-
-        return a
-
-    def get_output_shape_for(self, input_shape):
-        return input_shape[0], input_shape[1]
-
-
 class AttentionWithContext(Layer):
     """
         Attention operation, with a context/query vector, for temporal data.
@@ -329,77 +247,3 @@ class AttentionWithContext(Layer):
 
     def get_output_shape_for(self, input_shape):
         return input_shape[0], input_shape[-1]
-
-
-class AttentionWithContextSorting(Layer):
-    '''Attention operation for temporal data.
-    # Input shape
-        3D tensor with shape: `(samples, steps, features)`.
-    # Output shape
-        2D tensor with shape: `(samples, features)`.
-    '''
-
-    def __init__(self,
-                 W_regularizer=None, u_regularizer=None, b_regularizer=None,
-                 W_constraint=None, u_constraint=None, b_constraint=None,
-                 bias=True, **kwargs):
-
-        self.supports_masking = True
-        self.init = initializations.get('glorot_uniform')
-
-        self.W_regularizer = regularizers.get(W_regularizer)
-        self.u_regularizer = regularizers.get(u_regularizer)
-        self.b_regularizer = regularizers.get(b_regularizer)
-
-        self.W_constraint = constraints.get(W_constraint)
-        self.u_constraint = constraints.get(u_constraint)
-        self.b_constraint = constraints.get(b_constraint)
-
-        self.bias = bias
-        super(AttentionWithContextSorting, self).__init__(**kwargs)
-
-    def build(self, input_shape):
-        assert len(input_shape) == 3
-
-        self.W = self.add_weight((input_shape[-1], input_shape[-1],),
-                                 initializer=self.init,
-                                 name='{}_W'.format(self.name),
-                                 regularizer=self.W_regularizer,
-                                 constraint=self.W_constraint)
-        if self.bias:
-            self.b = self.add_weight((input_shape[-1],),
-                                     initializer='zero',
-                                     name='{}_b'.format(self.name),
-                                     regularizer=self.b_regularizer,
-                                     constraint=self.b_constraint)
-
-        self.u = self.add_weight((input_shape[-1],),
-                                 initializer=self.init,
-                                 name='{}_u'.format(self.name),
-                                 regularizer=self.u_regularizer,
-                                 constraint=self.u_constraint)
-
-        super(AttentionWithContextSorting, self).build(input_shape)
-
-    def compute_mask(self, input, input_mask=None):
-        return None
-
-    def call(self, x, mask=None):
-        uit = K.dot(x, self.W)
-
-        if self.bias:
-            uit += self.b
-
-        uit = K.tanh(uit)
-
-        ait = K.dot(uit, self.u)
-
-        # apply mask
-        if mask is not None:
-            mask = K.cast(mask, 'float32')
-            ait *= mask
-
-        return ait
-
-    def get_output_shape_for(self, input_shape):
-        return input_shape[0], input_shape[1]
