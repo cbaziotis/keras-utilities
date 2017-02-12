@@ -43,34 +43,6 @@ class MeanOverTime(Layer):
         return None
 
 
-class CustomMasking(Layer):
-    """
-    Not working...
-    """
-    def __init__(self, mask_value=0., **kwargs):
-        self.test = None
-        super(CustomMasking, self).__init__(**kwargs)
-
-    # def compute_mask(self, x, input_mask=None):
-    #     self.mask = K.not_equal(K.sum(K.abs(x), axis=-1, keepdims=True), 0)
-    #     return self.mask
-
-    # def output_mask(self):
-    #     return K.not_equal(K.sum(K.abs(x), axis=2, keepdims=True), 0)
-    def get_output_shape_for(self, input_shape):
-        return input_shape[0], input_shape[1]
-
-    def call(self, x, mask=None):
-        self.test = K.squeeze(x, axis=-1)
-        boolean_mask = K.not_equal(K.sum(K.abs(self.test), axis=-1, keepdims=True), 0)
-        return boolean_mask
-
-        # def get_config(self):
-        #     config = {'mask_value': self.mask_value}
-        #     base_config = super(CustomMasking, self).get_config()
-        #     return dict(list(base_config.items()) + list(config.items()))
-
-
 class Attention(Layer):
     def __init__(self,
                  W_regularizer=None, b_regularizer=None,
