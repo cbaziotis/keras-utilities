@@ -1,6 +1,3 @@
-"""
-Created by Christos Baziotis.
-"""
 from collections import Counter
 
 import numpy

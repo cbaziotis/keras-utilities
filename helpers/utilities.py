@@ -1,8 +1,3 @@
-"""
-Created by Christos Baziotis.
-"""
-
-
 def get_model_desc(model):
     desc = []
 
