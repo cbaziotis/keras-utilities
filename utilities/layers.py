@@ -1,16 +1,11 @@
 """
 Created by Christos Baziotis.
 """
-import marshal
-import numpy
-import sys
-import theano.tensor as T
 from keras import backend as K
 from keras import constraints
 from keras import initializations
 from keras import regularizers
 from keras.engine.topology import Layer
-from keras.layers import GlobalAveragePooling1D, python_types, Lambda, inspect
 
 
 class MeanOverTime(Layer):

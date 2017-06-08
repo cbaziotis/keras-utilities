@@ -1,1 +1,5 @@
 .idea/
+dist/
+build/
+*.egg-info/
+pypi_push.bat
