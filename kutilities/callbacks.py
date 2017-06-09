@@ -11,8 +11,9 @@ import seaborn as sns
 from keras import backend as K
 from keras.callbacks import Callback
 
-from helpers.data_preparation import onehot_to_categories
-from helpers.utilities import get_model_desc
+from kutilities.helpers.data_preparation import onehot_to_categories
+from kutilities.helpers.ui import move_figure
+from kutilities.helpers.utilities import get_model_desc
 
 plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern Roman'], 'monospace': ['Computer Modern Typewriter']})
 # plt.rc('text', usetex=True)
@@ -133,8 +134,12 @@ class PlottingCallback(Callback):
         self.custom_metrics = defaultdict(list)
         self.fig = None
 
-        models = len(glob.glob(os.path.join(os.path.dirname(__file__), "..", 'results', "model*.png")))
-        self.plot_fname = os.path.join(os.path.dirname(__file__), "..", 'results', 'model_{}.png'.format(models + 1))
+        res_path = os.path.join(os.getcwd(), 'results')
+        if not os.path.exists(res_path):
+            os.makedirs(res_path)
+
+        models = len(glob.glob(os.path.join(res_path, "model*.png")))
+        self.plot_fname = os.path.join(res_path, 'model_{}.png'.format(models + 1))
 
     def on_train_begin(self, logs={}):
         sns.set_style("whitegrid")
@@ -150,11 +155,8 @@ class PlottingCallback(Callback):
         self.fig = plt.figure(
             figsize=(self.width * (1 + len(self.get_metrics(logs))), self.height))  # width, height in inches
 
-        mngr = plt.get_current_fig_manager()
-        # to put it into the upper left corner for example:
-        geom = mngr.window.geometry()
-        x, y, dx, dy = geom.getRect()
-        mngr.window.setGeometry(25, 25, dx, dy)
+        # move it to the upper left corner
+        move_figure(self.fig, 25, 25)
 
     def save_plot(self):
         self.fig.savefig(self.plot_fname, dpi=100)
@@ -232,6 +234,7 @@ class PlottingCallback(Callback):
         self.save_plot()
 
     def on_train_end(self, logs={}):
+        plt.close(self.fig)
         self.save_plot()
 
 
@@ -272,7 +275,7 @@ class WeightsCallback(Callback):
 
         # plt.style.use('ggplot')
         plt.ion()  # set plot to animated
-        width = 4 * (1 + len(self.stats))
+        width = 3 * (1 + len(self.stats))
         height = 2 * len(self.layers_stats)
         self.fig = plt.figure(figsize=(width, height))  # width, height in inches
         # sns.set_style("whitegrid")
