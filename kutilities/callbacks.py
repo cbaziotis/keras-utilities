@@ -1,6 +1,3 @@
-"""
-Created by Christos Baziotis.
-"""
 import glob
 import os
 from collections import defaultdict
@@ -12,8 +9,8 @@ from keras import backend as K
 from keras.callbacks import Callback
 
 from kutilities.helpers.data_preparation import onehot_to_categories
+from kutilities.helpers.generic import get_model_desc
 from kutilities.helpers.ui import move_figure
-from kutilities.helpers.utilities import get_model_desc
 
 plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern Roman'], 'monospace': ['Computer Modern Typewriter']})
 # plt.rc('text', usetex=True)

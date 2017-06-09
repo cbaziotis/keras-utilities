@@ -1,4 +1,9 @@
 def get_model_desc(model):
+    """
+    Generates a small description of a Keras model. Suitable for generating footer descriptions for charts.
+    :param model:
+    :return:
+    """
     desc = []
 
     conf = model.get_config()

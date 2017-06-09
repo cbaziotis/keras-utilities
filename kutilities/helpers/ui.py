@@ -1,6 +1,3 @@
-"""
-Created by Christos Baziotis.
-"""
 import matplotlib
 
 

@@ -1,6 +1,3 @@
-"""
-Created by Christos Baziotis.
-"""
 from keras import backend as K
 from keras import constraints
 from keras import initializations
