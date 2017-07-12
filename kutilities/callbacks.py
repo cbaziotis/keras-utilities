@@ -36,11 +36,13 @@ class LossEarlyStopping(Callback):
 
 
 class MetricsCallback(Callback):
-    def __init__(self, metrics, validation_data, training_data=None, test_data=None, regression=False):
+    """
+
+    """
+
+    def __init__(self, metrics, datasets, regression=False):
         super().__init__()
-        self.training_data = training_data
-        self.validation_data = validation_data
-        self.test_data = test_data
+        self.datasets = datasets
         self.metrics = metrics
         self.regression = regression
 
@@ -111,12 +113,8 @@ class MetricsCallback(Callback):
         pass
 
     def on_epoch_end(self, epoch, logs={}):
-        if self.validation_data:
-            self.add_predictions(self.validation_data, name="val", logs=logs)
-        if self.test_data:
-            self.add_predictions(self.test_data, name="test", logs=logs)
-        if self.training_data:
-            self.add_predictions(self.training_data, name="train", logs=logs)
+        for name, data in self.datasets.items():
+            self.add_predictions(data if len(data) > 1 else data[0], name=name, logs=logs)
 
 
 class PlottingCallback(Callback):
@@ -194,7 +192,7 @@ class PlottingCallback(Callback):
 
         ##################################################
         # Second - Plot Custom Metrics
-        for i, (dataset_name, metrics) in enumerate(sorted(custom_metrics_keys.items(), reverse=True)):
+        for i, (dataset_name, metrics) in enumerate(sorted(custom_metrics_keys.items(), reverse=False)):
             axs = self.fig.add_subplot(1, total_plots, i + 2)
             axs.set_title(dataset_name, fontsize=10)
             axs.set_ylabel('score')

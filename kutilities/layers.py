@@ -20,8 +20,7 @@ class MeanOverTime(Layer):
     def call(self, x, mask=None):
         if mask is not None:
             mask = K.cast(mask, 'float32')
-            s = mask.sum(axis=1, keepdims=True)
-            if K.equal(s, K.zeros_like(s)):
+            if not K.any(mask):
                 return K.mean(x, axis=1)
             else:
                 return K.cast(x.sum(axis=1) / mask.sum(axis=1, keepdims=True), K.floatx())
