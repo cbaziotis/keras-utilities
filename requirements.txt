@@ -1,0 +1,6 @@
+Keras==1.2.2
+matplotlib==2.0.2
+numpy==1.13.1
+seaborn==0.8
+setuptools==36.2.4
+scikit_learn==0.19b2

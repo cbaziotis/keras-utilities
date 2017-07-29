@@ -5,6 +5,24 @@ from keras import regularizers
 from keras.engine.topology import Layer
 
 
+def dot_product(x, kernel):
+    """
+    Wrapper for dot product operation, in order to be compatible with both
+    Theano and Tensorflow
+    Args:
+        x (): input
+        kernel (): weights
+
+    Returns:
+
+    """
+    if K.backend() == 'tensorflow':
+        # todo: check that this is correct
+        return K.squeeze(K.dot(x, K.expand_dims(kernel)), axis=-1)
+    else:
+        return K.dot(x, kernel)
+
+
 class MeanOverTime(Layer):
     """
     Layer that computes the mean of timesteps returned from an RNN and supports masking
@@ -23,7 +41,8 @@ class MeanOverTime(Layer):
             if not K.any(mask):
                 return K.mean(x, axis=1)
             else:
-                return K.cast(x.sum(axis=1) / mask.sum(axis=1, keepdims=True), K.floatx())
+                return K.cast(x.sum(axis=1) / mask.sum(axis=1, keepdims=True),
+                              K.floatx())
         else:
             return K.mean(x, axis=1)
 
@@ -91,7 +110,7 @@ class Attention(Layer):
         return None
 
     def call(self, x, mask=None):
-        eij = K.dot(x, self.W)
+        eij = dot_product(x, self.W)
 
         if self.bias:
             eij += self.b
@@ -184,7 +203,7 @@ class AttentionWithContext(Layer):
         return None
 
     def call(self, x, mask=None):
-        uit = K.dot(x, self.W)
+        uit = dot_product(x, self.W)
 
         if self.bias:
             uit += self.b

@@ -12,7 +12,8 @@ from kutilities.helpers.data_preparation import onehot_to_categories
 from kutilities.helpers.generic import get_model_desc
 from kutilities.helpers.ui import move_figure
 
-plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern Roman'], 'monospace': ['Computer Modern Typewriter']})
+plt.rc('font', **{'family': 'serif', 'serif': ['Computer Modern Roman'],
+                  'monospace': ['Computer Modern Typewriter']})
 # plt.rc('text', usetex=True)
 plt.rc("figure", facecolor="white")
 
@@ -28,11 +29,15 @@ class LossEarlyStopping(Callback):
         if self.mode == "less":
             if logs[self.metric] < self.value:
                 self.model.stop_training = True
-                print('Early stopping - {} is {} than {}'.format(self.metric, self.mode, self.value))
+                print('Early stopping - {} is {} than {}'.format(self.metric,
+                                                                 self.mode,
+                                                                 self.value))
         if self.mode == "more":
             if logs[self.metric] > self.value:
                 self.model.stop_training = True
-                print('Early stopping - {} is {} than {}'.format(self.metric, self.mode, self.value))
+                print('Early stopping - {} is {} than {}'.format(self.metric,
+                                                                 self.mode,
+                                                                 self.value))
 
 
 class MetricsCallback(Callback):
@@ -66,9 +71,11 @@ class MetricsCallback(Callback):
         else:
             if len(y.shape) > 1:
                 try:
-                    y_pred = self.model.predict_classes(X, batch_size=2048, verbose=0)
-                except Exception as e:
-                    y_pred = self.predic_classes(self.model.predict(X, batch_size=2048, verbose=0))
+                    y_pred = self.model.predict_classes(X, batch_size=2048,
+                                                        verbose=0)
+                except Exception:
+                    y_pred = self.predic_classes(
+                        self.model.predict(X, batch_size=2048, verbose=0))
 
                 y_test = onehot_to_categories(y)
 
@@ -85,26 +92,32 @@ class MetricsCallback(Callback):
 
     @staticmethod
     def get_activations(model, layer, X_batch):
-        get_activations = K.function([model.layers[0].input, K.learning_phase()], model.layers[layer].output)
+        get_activations = K.function(
+            [model.layers[0].input, K.learning_phase()],
+            model.layers[layer].output)
         activations = get_activations([X_batch, 0])
         return activations
 
     #
     @staticmethod
     def get_input_mask(model, layer, X_batch):
-        get_input_mask = K.function([model.layers[0].input, K.learning_phase()], model.layers[layer].input_mask)
+        get_input_mask = K.function([model.layers[0].input, K.learning_phase()],
+                                    model.layers[layer].input_mask)
         input_mask = get_input_mask([X_batch, 0])
         return input_mask
 
     @staticmethod
     def get_output_mask(model, layer, X_batch):
-        get_output_mask = K.function([model.layers[0].input, K.learning_phase()], model.layers[layer].output_mask)
+        get_output_mask = K.function(
+            [model.layers[0].input, K.learning_phase()],
+            model.layers[layer].output_mask)
         output_mask = get_output_mask([X_batch, 0])
         return output_mask
 
     @staticmethod
     def get_input(model, layer, X_batch):
-        get_input = K.function([model.layers[0].input, K.learning_phase()], model.layers[layer].input)
+        get_input = K.function([model.layers[0].input, K.learning_phase()],
+                               model.layers[layer].input)
         _input = get_input([X_batch, 0])
         return _input
 
@@ -114,7 +127,8 @@ class MetricsCallback(Callback):
 
     def on_epoch_end(self, epoch, logs={}):
         for name, data in self.datasets.items():
-            self.add_predictions(data if len(data) > 1 else data[0], name=name, logs=logs)
+            self.add_predictions(data if len(data) > 1 else data[0], name=name,
+                                 logs=logs)
 
 
 class PlottingCallback(Callback):
@@ -134,21 +148,24 @@ class PlottingCallback(Callback):
             os.makedirs(res_path)
 
         models = len(glob.glob(os.path.join(res_path, "model*.png")))
-        self.plot_fname = os.path.join(res_path, 'model_{}.png'.format(models + 1))
+        self.plot_fname = os.path.join(res_path,
+                                       'model_{}.png'.format(models + 1))
 
     def on_train_begin(self, logs={}):
         sns.set_style("whitegrid")
         sns.set_style("whitegrid", {"grid.linewidth": 0.5,
                                     "lines.linewidth": 0.5,
                                     "axes.linewidth": 0.5})
-        flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
+        flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e",
+                  "#2ecc71"]
         sns.set_palette(sns.color_palette(flatui))
         # flatui = ["#9b59b6", "#3498db", "#95a5a6", "#e74c3c", "#34495e", "#2ecc71"]
         # sns.set_palette(sns.color_palette("Set2", 10))
 
         plt.ion()  # set plot to animated
         self.fig = plt.figure(
-            figsize=(self.width * (1 + len(self.get_metrics(logs))), self.height))  # width, height in inches
+            figsize=(self.width * (1 + len(self.get_metrics(logs))),
+                     self.height))  # width, height in inches
 
         # move it to the upper left corner
         move_figure(self.fig, 25, 25)
@@ -168,7 +185,8 @@ class PlottingCallback(Callback):
     def on_epoch_end(self, epoch, logs={}):
         self.fig.clf()
         linewidth = 1.2
-        self.fig.set_size_inches(self.width * (1 + len(self.get_metrics(logs))), self.height, forward=True)
+        self.fig.set_size_inches(self.width * (1 + len(self.get_metrics(logs))),
+                                 self.height, forward=True)
         custom_metrics_keys = self.get_metrics(logs)
 
         total_plots = len(custom_metrics_keys) + 1
@@ -192,7 +210,8 @@ class PlottingCallback(Callback):
 
         ##################################################
         # Second - Plot Custom Metrics
-        for i, (dataset_name, metrics) in enumerate(sorted(custom_metrics_keys.items(), reverse=False)):
+        for i, (dataset_name, metrics) in enumerate(
+                sorted(custom_metrics_keys.items(), reverse=False)):
             axs = self.fig.add_subplot(1, total_plots, i + 2)
             axs.set_title(dataset_name, fontsize=10)
             axs.set_ylabel('score')
@@ -204,12 +223,14 @@ class PlottingCallback(Callback):
             for m in sorted(metrics):
                 entry = ".".join([dataset_name, m])
                 self.custom_metrics[entry].append(logs[entry])
-                axs.plot(self.custom_metrics[entry], label=m, linewidth=linewidth)
+                axs.plot(self.custom_metrics[entry], label=m,
+                         linewidth=linewidth)
 
             axs.tick_params(labelsize=10)
             labels = list(sorted(metrics))
             if self.benchmarks:
-                for (label, benchmark), color in zip(self.benchmarks.items(), ["y", "r"]):
+                for (label, benchmark), color in zip(self.benchmarks.items(),
+                                                     ["y", "r"]):
                     axs.axhline(y=benchmark, linewidth=linewidth, color=color)
                     labels = labels + [label]
             axs.legend(labels, loc='upper left', fancybox=True)
@@ -220,7 +241,8 @@ class PlottingCallback(Callback):
         plt.rcParams.update({'font.size': 10})
 
         desc = get_model_desc(self.model)
-        self.fig.text(.02, .02, desc, verticalalignment='bottom', wrap=True, fontsize=8)
+        self.fig.text(.02, .02, desc, verticalalignment='bottom', wrap=True,
+                      fontsize=8)
         self.fig.tight_layout()
         self.fig.subplots_adjust(bottom=.18)
         self.fig.canvas.draw()
@@ -246,25 +268,39 @@ class WeightsCallback(Callback):
         if stats is None:
             self.stats = ["mean", "std"]
 
+    @staticmethod
+    def strip_weight_name_suffix(name):
+        try:
+            return name[:name.index(":")]
+        except:
+            return name
+
+    def param_weights(self, weights, param):
+        return [w for w in weights if param
+                in self.strip_weight_name_suffix(w.name).split("_")]
+
     def get_trainable_layers(self):
         layers = []
         for layer in self.model.layers:
             if "merge" in layer.name:
                 for l in layer.layers:
-                    if hasattr(l, 'trainable') and l.trainable and len(l.weights):
+                    if hasattr(l, 'trainable') and l.trainable and len(
+                            l.weights):
                         if not any(x.name == l.name for x in layers):
                             layers.append(l)
             else:
-                if hasattr(layer, 'trainable') and layer.trainable and len(layer.weights):
+                if hasattr(layer, 'trainable') and layer.trainable and len(
+                        layer.weights):
                     layers.append(layer)
         return layers
 
     def on_train_begin(self, logs={}):
         for layer in self.get_trainable_layers():
             for param in self.parameters:
-                if any(w for w in layer.weights if param in w.name.split("_")):
+                if any(self.param_weights(layer.weights, param)):
                     name = layer.name + "_" + param
-                    self.layers_stats[name]["values"] = numpy.asarray([]).ravel()
+                    self.layers_stats[name]["values"] = numpy.asarray(
+                        []).ravel()
                     for s in self.stats:
                         self.layers_stats[name][s] = []
 
@@ -272,7 +308,8 @@ class WeightsCallback(Callback):
         plt.ion()  # set plot to animated
         width = 3 * (1 + len(self.stats))
         height = 2 * len(self.layers_stats)
-        self.fig = plt.figure(figsize=(width, height))  # width, height in inches
+        self.fig = plt.figure(
+            figsize=(width, height))  # width, height in inches
         # sns.set_style("whitegrid")
         # self.draw_plot()
 
@@ -286,12 +323,12 @@ class WeightsCallback(Callback):
         plot_count = 1
         for layer in layers:
             for param in self.parameters:
-                weights = [w for w in layer.weights if param in w.name.split("_")]
+                weights = self.param_weights(layer.weights, param)
 
                 if len(weights) == 0:
                     continue
 
-                val = numpy.column_stack((w.get_value() for w in weights))
+                val = numpy.column_stack((K.eval(w) for w in weights))
                 name = layer.name + "_" + param
 
                 self.layers_stats[name]["values"] = val.ravel()
@@ -310,11 +347,13 @@ class WeightsCallback(Callback):
                             val = val.reshape((val.shape[0], -1), order='F')
                         self.layers_stats[name][s] = val
                         m = axs.imshow(self.layers_stats[name][s],
-                                       cmap='coolwarm', interpolation='nearest', aspect='auto', )  # aspect='equal'
+                                       cmap='coolwarm', interpolation='nearest',
+                                       aspect='auto', )  # aspect='equal'
                         cbar = self.fig.colorbar(mappable=m)
                         cbar.ax.tick_params(labelsize=8)
                     else:
-                        self.layers_stats[name][s].append(getattr(numpy, s)(val))
+                        self.layers_stats[name][s].append(
+                            getattr(numpy, s)(val))
                         axs.plot(self.layers_stats[name][s])
                         axs.set_ylabel(s, fontsize="small")
                         axs.set_xlabel('epoch', fontsize="small")
@@ -326,7 +365,8 @@ class WeightsCallback(Callback):
 
         # plt.figtext(.1, .1, get_model_desc(self.model), wrap=True, fontsize=8)
         desc = get_model_desc(self.model)
-        self.fig.text(.02, .02, desc, verticalalignment='bottom', wrap=True, fontsize=8)
+        self.fig.text(.02, .02, desc, verticalalignment='bottom', wrap=True,
+                      fontsize=8)
         self.fig.tight_layout()
         self.fig.subplots_adjust(bottom=.14)
         self.fig.canvas.draw()
@@ -338,12 +378,12 @@ class WeightsCallback(Callback):
 
         for layer in layers:
             for param in self.parameters:
-                weights = [w for w in layer.weights if param in w.name.split("_")]
+                weights = self.param_weights(layer.weights, param)
 
                 if len(weights) == 0:
                     continue
 
-                val = numpy.column_stack((w.get_value() for w in weights))
+                val = numpy.column_stack((K.eval(w) for w in weights))
                 name = layer.name + "_" + param
                 self.layers_stats[name]["values"] = val.ravel()
                 for s in self.stats:
@@ -353,7 +393,8 @@ class WeightsCallback(Callback):
                         self.layers_stats[name][s] = val
                         # self.fig.colorbar()
                     else:
-                        self.layers_stats[name][s].append(getattr(numpy, s)(val))
+                        self.layers_stats[name][s].append(
+                            getattr(numpy, s)(val))
 
         plt.figtext(.02, .02, get_model_desc(self.model), wrap=True, fontsize=8)
         self.fig.tight_layout()
