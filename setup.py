@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='keras-utilities',
-      version='0.1.4',
+      version='0.1.5',
       description='Utilities for Keras.',
       url='https://github.com/cbaziotis/keras-utilities',
       author='Christos Baziotis',
