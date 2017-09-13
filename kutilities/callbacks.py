@@ -45,11 +45,12 @@ class MetricsCallback(Callback):
 
     """
 
-    def __init__(self, metrics, datasets, regression=False):
+    def __init__(self, metrics, datasets, regression=False, batch_size=512):
         super().__init__()
         self.datasets = datasets
         self.metrics = metrics
         self.regression = regression
+        self.batch_size = batch_size
 
     @staticmethod
     def predic_classes(predictions):
@@ -63,7 +64,8 @@ class MetricsCallback(Callback):
         y = dataset[1]
 
         if self.regression:
-            y_pred = self.model.predict(X, batch_size=2048, verbose=0)
+            y_pred = self.model.predict(X, batch_size=self.batch_size,
+                                        verbose=0)
             y_pred = numpy.reshape(y_pred, y.shape)
             y_test = y
 
@@ -71,16 +73,19 @@ class MetricsCallback(Callback):
         else:
             if len(y.shape) > 1:
                 try:
-                    y_pred = self.model.predict_classes(X, batch_size=2048,
+                    y_pred = self.model.predict_classes(X,
+                                                        batch_size=self.batch_size,
                                                         verbose=0)
-                except Exception:
+                except:
                     y_pred = self.predic_classes(
-                        self.model.predict(X, batch_size=2048, verbose=0))
+                        self.model.predict(X, batch_size=self.batch_size,
+                                           verbose=0))
 
                 y_test = onehot_to_categories(y)
 
             else:
-                y_pred = self.model.predict(X, batch_size=2048, verbose=0)
+                y_pred = self.model.predict(X, batch_size=self.batch_size,
+                                            verbose=0)
                 y_pred = numpy.array([int(_y > 0.5) for _y in y_pred])
                 y_test = y
 
@@ -132,7 +137,8 @@ class MetricsCallback(Callback):
 
 
 class PlottingCallback(Callback):
-    def __init__(self, benchmarks=None, grid_ranges=None, width=4, height=4):
+    def __init__(self, benchmarks=None, grid_ranges=None, width=4, height=4,
+                 plot_name=None):
         super().__init__()
         self.height = height
         self.width = width
@@ -143,13 +149,17 @@ class PlottingCallback(Callback):
         self.custom_metrics = defaultdict(list)
         self.fig = None
 
-        res_path = os.path.join(os.getcwd(), 'results')
+        res_path = os.path.join(os.getcwd(), 'experiments')
         if not os.path.exists(res_path):
             os.makedirs(res_path)
 
         models = len(glob.glob(os.path.join(res_path, "model*.png")))
-        self.plot_fname = os.path.join(res_path,
-                                       'model_{}.png'.format(models + 1))
+
+        if plot_name is None:
+            self.plot_fname = os.path.join(res_path,
+                                           'model_{}.png'.format(models + 1))
+        else:
+            self.plot_fname = os.path.join(res_path, '{}.png'.format(plot_name))
 
     def on_train_begin(self, logs={}):
         sns.set_style("whitegrid")
@@ -252,7 +262,7 @@ class PlottingCallback(Callback):
 
     def on_train_end(self, logs={}):
         plt.close(self.fig)
-        self.save_plot()
+        # self.save_plot()
 
 
 class WeightsCallback(Callback):
@@ -267,17 +277,6 @@ class WeightsCallback(Callback):
             self.parameters = ["W"]
         if stats is None:
             self.stats = ["mean", "std"]
-
-    @staticmethod
-    def strip_weight_name_suffix(name):
-        try:
-            return name[:name.index(":")]
-        except:
-            return name
-
-    def param_weights(self, weights, param):
-        return [w for w in weights if param
-                in self.strip_weight_name_suffix(w.name).split("_")]
 
     def get_trainable_layers(self):
         layers = []
@@ -297,7 +296,7 @@ class WeightsCallback(Callback):
     def on_train_begin(self, logs={}):
         for layer in self.get_trainable_layers():
             for param in self.parameters:
-                if any(self.param_weights(layer.weights, param)):
+                if any(w for w in layer.weights if param in w.name.split("_")):
                     name = layer.name + "_" + param
                     self.layers_stats[name]["values"] = numpy.asarray(
                         []).ravel()
@@ -323,12 +322,13 @@ class WeightsCallback(Callback):
         plot_count = 1
         for layer in layers:
             for param in self.parameters:
-                weights = self.param_weights(layer.weights, param)
+                weights = [w for w in layer.weights if
+                           param in w.name.split("_")]
 
                 if len(weights) == 0:
                     continue
 
-                val = numpy.column_stack((K.eval(w) for w in weights))
+                val = numpy.column_stack((w.get_value() for w in weights))
                 name = layer.name + "_" + param
 
                 self.layers_stats[name]["values"] = val.ravel()
@@ -378,12 +378,13 @@ class WeightsCallback(Callback):
 
         for layer in layers:
             for param in self.parameters:
-                weights = self.param_weights(layer.weights, param)
+                weights = [w for w in layer.weights if
+                           param in w.name.split("_")]
 
                 if len(weights) == 0:
                     continue
 
-                val = numpy.column_stack((K.eval(w) for w in weights))
+                val = numpy.column_stack((w.get_value() for w in weights))
                 name = layer.name + "_" + param
                 self.layers_stats[name]["values"] = val.ravel()
                 for s in self.stats:
