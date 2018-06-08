@@ -1,7 +1,4 @@
-from keras import backend as K
-from keras import constraints
-from keras import initializations
-from keras import regularizers
+from keras import backend as K, regularizers, constraints, initializers
 from keras.engine.topology import Layer
 
 
@@ -12,9 +9,7 @@ def dot_product(x, kernel):
     Args:
         x (): input
         kernel (): weights
-
     Returns:
-
     """
     if K.backend() == 'tensorflow':
         # todo: check that this is correct
@@ -57,7 +52,9 @@ class Attention(Layer):
     def __init__(self,
                  W_regularizer=None, b_regularizer=None,
                  W_constraint=None, b_constraint=None,
-                 bias=True, **kwargs):
+                 bias=True,
+                 return_attention=False,
+                 **kwargs):
         """
         Keras Layer that implements an Attention mechanism for temporal data.
         Supports Masking.
@@ -67,15 +64,22 @@ class Attention(Layer):
         # Output shape
             2D tensor with shape: `(samples, features)`.
         :param kwargs:
-
         Just put it on top of an RNN Layer (GRU/LSTM/SimpleRNN) with return_sequences=True.
         The dimensions are inferred based on the output shape of the RNN.
+        Note: The layer has been tested with Keras 1.x
         Example:
+
+            # 1
             model.add(LSTM(64, return_sequences=True))
             model.add(Attention())
+            # next add a Dense layer (for classification/regression) or whatever...
+            # 2 - Get the attention scores
+            hidden = LSTM(64, return_sequences=True)(words)
+            sentence, word_scores = Attention(return_attention=True)(hidden)
         """
         self.supports_masking = True
-        self.init = initializations.get('glorot_uniform')
+        self.return_attention = return_attention
+        self.init = initializers.get('glorot_uniform')
 
         self.W_regularizer = regularizers.get(W_regularizer)
         self.b_regularizer = regularizers.get(b_regularizer)
@@ -129,12 +133,20 @@ class Attention(Layer):
         # a /= K.cast(K.sum(a, axis=1, keepdims=True), K.floatx())
         a /= K.cast(K.sum(a, axis=1, keepdims=True) + K.epsilon(), K.floatx())
 
-        a = K.expand_dims(a)
-        weighted_input = x * a
-        return K.sum(weighted_input, axis=1)
+        weighted_input = x * K.expand_dims(a)
 
-    def get_output_shape_for(self, input_shape):
-        return input_shape[0], input_shape[-1]
+        result = K.sum(weighted_input, axis=1)
+
+        if self.return_attention:
+            return [result, a]
+        return result
+
+    def compute_output_shape(self, input_shape):
+        if self.return_attention:
+            return [(input_shape[0], input_shape[-1]),
+                    (input_shape[0], input_shape[1])]
+        else:
+            return input_shape[0], input_shape[-1]
 
 
 class AttentionWithContext(Layer):
@@ -159,10 +171,12 @@ class AttentionWithContext(Layer):
     def __init__(self,
                  W_regularizer=None, u_regularizer=None, b_regularizer=None,
                  W_constraint=None, u_constraint=None, b_constraint=None,
-                 bias=True, **kwargs):
+                 bias=True,
+                 return_attention=False, **kwargs):
 
         self.supports_masking = True
-        self.init = initializations.get('glorot_uniform')
+        self.return_attention = return_attention
+        self.init = initializers.get('glorot_uniform')
 
         self.W_regularizer = regularizers.get(W_regularizer)
         self.u_regularizer = regularizers.get(u_regularizer)
@@ -225,7 +239,15 @@ class AttentionWithContext(Layer):
 
         a = K.expand_dims(a)
         weighted_input = x * a
-        return K.sum(weighted_input, axis=1)
+        result = K.sum(weighted_input, axis=1)
 
-    def get_output_shape_for(self, input_shape):
-        return input_shape[0], input_shape[-1]
+        if self.return_attention:
+            return [result, a]
+        return result
+
+    def compute_output_shape(self, input_shape):
+        if self.return_attention:
+            return [(input_shape[0], input_shape[-1]),
+                    (input_shape[0], input_shape[1])]
+        else:
+            return input_shape[0], input_shape[-1]

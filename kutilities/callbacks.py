@@ -1,6 +1,9 @@
 import glob
 import os
 from collections import defaultdict
+import matplotlib
+
+matplotlib.use('TkAgg')
 
 import matplotlib.pyplot as plt
 import numpy
