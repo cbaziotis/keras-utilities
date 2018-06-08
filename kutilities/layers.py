@@ -33,15 +33,12 @@ class MeanOverTime(Layer):
     def call(self, x, mask=None):
         if mask is not None:
             mask = K.cast(mask, 'float32')
-            if not K.any(mask):
-                return K.mean(x, axis=1)
-            else:
-                return K.cast(x.sum(axis=1) / mask.sum(axis=1, keepdims=True),
-                              K.floatx())
+            return K.cast(K.sum(x, axis=1) / K.sum(mask, axis=1, keepdims=True),
+                          K.floatx())
         else:
             return K.mean(x, axis=1)
 
-    def get_output_shape_for(self, input_shape):
+    def compute_output_shape(self, input_shape):
         return input_shape[0], input_shape[-1]
 
     def compute_mask(self, input, input_mask=None):
@@ -223,7 +220,8 @@ class AttentionWithContext(Layer):
             uit += self.b
 
         uit = K.tanh(uit)
-        ait = K.dot(uit, self.u)
+        # ait = K.dot(uit, self.u)
+        ait = dot_product(uit, self.u)
 
         a = K.exp(ait)
 
