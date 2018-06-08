@@ -8,8 +8,8 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy
 import seaborn as sns
-from keras import backend as K
 from keras.callbacks import Callback
+import pandas as pd
 
 from kutilities.helpers.data_preparation import onehot_to_categories
 from kutilities.helpers.generic import get_model_desc
@@ -98,45 +98,17 @@ class MetricsCallback(Callback):
             self.params['metrics'].append(entry)
             logs[entry] = score
 
-    @staticmethod
-    def get_activations(model, layer, X_batch):
-        get_activations = K.function(
-            [model.layers[0].input, K.learning_phase()],
-            model.layers[layer].output)
-        activations = get_activations([X_batch, 0])
-        return activations
-
-    #
-    @staticmethod
-    def get_input_mask(model, layer, X_batch):
-        get_input_mask = K.function([model.layers[0].input, K.learning_phase()],
-                                    model.layers[layer].input_mask)
-        input_mask = get_input_mask([X_batch, 0])
-        return input_mask
-
-    @staticmethod
-    def get_output_mask(model, layer, X_batch):
-        get_output_mask = K.function(
-            [model.layers[0].input, K.learning_phase()],
-            model.layers[layer].output_mask)
-        output_mask = get_output_mask([X_batch, 0])
-        return output_mask
-
-    @staticmethod
-    def get_input(model, layer, X_batch):
-        get_input = K.function([model.layers[0].input, K.learning_phase()],
-                               model.layers[layer].input)
-        _input = get_input([X_batch, 0])
-        return _input
-
-    def on_batch_end(self, batch, logs=None):
-        # output = self.get_output(self.model, 3, self.training_data[0][:1])
-        pass
-
     def on_epoch_end(self, epoch, logs={}):
         for name, data in self.datasets.items():
             self.add_predictions(data if len(data) > 1 else data[0], name=name,
                                  logs=logs)
+
+        data = {}
+        for dataset in sorted(self.datasets.keys()):
+            data[dataset] = {metric: logs[".".join([dataset, metric])]
+                             for metric in sorted(self.metrics.keys())}
+        print(pd.DataFrame.from_dict(data, orient="index"))
+        print()
 
 
 class PlottingCallback(Callback):
@@ -162,7 +134,8 @@ class PlottingCallback(Callback):
             self.plot_fname = os.path.join(res_path,
                                            'model_{}.png'.format(models + 1))
         else:
-            self.plot_fname = os.path.join(res_path, '{}.png'.format(plot_name))
+            self.plot_fname = os.path.join(res_path,
+                                           '{}.png'.format(plot_name))
 
     def on_train_begin(self, logs={}):
         sns.set_style("whitegrid")
@@ -176,9 +149,9 @@ class PlottingCallback(Callback):
         # sns.set_palette(sns.color_palette("Set2", 10))
 
         plt.ion()  # set plot to animated
-        self.fig = plt.figure(
-            figsize=(self.width * (1 + len(self.get_metrics(logs))),
-                     self.height))  # width, height in inches
+        width = self.width * (1 + len(self.get_metrics(logs)))
+        height = self.height
+        self.fig = plt.figure(figsize=(width, height))
 
         # move it to the upper left corner
         move_figure(self.fig, 25, 25)
@@ -198,8 +171,9 @@ class PlottingCallback(Callback):
     def on_epoch_end(self, epoch, logs={}):
         self.fig.clf()
         linewidth = 1.2
-        self.fig.set_size_inches(self.width * (1 + len(self.get_metrics(logs))),
-                                 self.height, forward=True)
+        self.fig.set_size_inches(
+            self.width * (1 + len(self.get_metrics(logs))),
+            self.height, forward=True)
         custom_metrics_keys = self.get_metrics(logs)
 
         total_plots = len(custom_metrics_keys) + 1
@@ -269,6 +243,7 @@ class PlottingCallback(Callback):
 
 
 class WeightsCallback(Callback):
+    # todo: update to Keras 2.X
     def __init__(self, parameters=None, stats=None, merge_weights=True):
         super().__init__()
         self.layers_stats = defaultdict(dict)
@@ -310,10 +285,9 @@ class WeightsCallback(Callback):
         plt.ion()  # set plot to animated
         width = 3 * (1 + len(self.stats))
         height = 2 * len(self.layers_stats)
-        self.fig = plt.figure(
-            figsize=(width, height))  # width, height in inches
+        self.fig = plt.figure(figsize=(width, height))
         # sns.set_style("whitegrid")
-        # self.draw_plot()
+        self.draw_plot()
 
     def draw_plot(self):
         self.fig.clf()
@@ -350,7 +324,8 @@ class WeightsCallback(Callback):
                             val = val.reshape((val.shape[0], -1), order='F')
                         self.layers_stats[name][s] = val
                         m = axs.imshow(self.layers_stats[name][s],
-                                       cmap='coolwarm', interpolation='nearest',
+                                       cmap='coolwarm',
+                                       interpolation='nearest',
                                        aspect='auto', )  # aspect='equal'
                         cbar = self.fig.colorbar(mappable=m)
                         cbar.ax.tick_params(labelsize=8)
@@ -400,11 +375,12 @@ class WeightsCallback(Callback):
                         self.layers_stats[name][s].append(
                             getattr(numpy, s)(val))
 
-        plt.figtext(.02, .02, get_model_desc(self.model), wrap=True, fontsize=8)
+        plt.figtext(.02, .02, get_model_desc(self.model), wrap=True,
+                    fontsize=8)
         self.fig.tight_layout()
         self.fig.subplots_adjust(bottom=.2)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
     def on_epoch_end(self, epoch, logs={}):
-        self.draw_plot()
+        self.update_plot()
