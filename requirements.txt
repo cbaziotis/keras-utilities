@@ -1,4 +1,4 @@
-numpy==1.11.0
+numpy==1.22.0
 setuptools==20.7.0
 matplotlib==1.5.1
 keras==2.2.0
