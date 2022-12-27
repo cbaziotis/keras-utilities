@@ -1,5 +1,5 @@
 numpy==1.11.0
-setuptools==20.7.0
+setuptools==65.5.1
 matplotlib==1.5.1
 keras==2.2.0
 seaborn==0.8.1
